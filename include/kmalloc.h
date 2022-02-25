@@ -1,7 +1,7 @@
 #ifndef __KMALLOC_H
 #define __KMALLOC_H
 
-#include <memory/allocator/kmalloc.h>
+#include <memory/mm_types.h>
 
 #define KMALLOC_SHIFT_MAX	(MAX_ORDER + PAGE_SHIFT - 1)
 #define KMALLOC_SHIFT_HIGH	(PAGE_SHIFT)
@@ -23,4 +23,3 @@ struct kmalloc_info_struct {
 };
 
 #endif /* __KMALLOC_H */
-

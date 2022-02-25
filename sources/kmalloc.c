@@ -1,6 +1,8 @@
-#include <page.h>
-#include <slabcache.h>
+#include <memory/allocator/compound_page.h>
+#include <memory/allocator/slabcache.h>
+#include <memory/page_flags.h>
 #include <kmalloc.h>
+#include <bitops/fls.h>
 
 const static struct kmalloc_info_struct kmalloc_info[] = {
 	{NULL,                  0},	{NULL,                  0},
@@ -42,19 +44,11 @@ static inline int get_order(unsigned long size)
 
 static void *kmalloc_large(size_t size, gfp_t flags)
 {
-	struct page *page;
 	unsigned int order;
 
 	order = get_order(size);
-	page = __alloc_pages(flags, order);
-	if (!page)
-		return 0;
 
-	set_compound_page_order(page, order);
-	set_compound_page_head(page, page, order);
-	set_page_compound(page);
-
-	return page_address(page);
+	return alloc_compound_pages(flags, order);
 }
 
 /*
@@ -80,14 +74,6 @@ static struct slab_cache *kmalloc_cache(size_t size, gfp_t flags)
  * kmalloc is the normal method of allocating memory for kernel.
  * when objects smaller than page size, allocate by slab allocator.
  * when objects bigger than page size, allocate by page allocator.
- *
- * Below is a brief outline of the most useful GFP flags
- *
- * %GFP_KERNEL
- *	Allocate normal kernel ram. May sleep.
- *
- * %GFP_NOWAIT
- *	Allocation will not sleep.
  */
 void *kmalloc(size_t size, gfp_t flags)
 {
@@ -116,19 +102,13 @@ void *kmalloc(size_t size, gfp_t flags)
 void kfree(void *object)
 {
 	struct page *page;
-	unsigned int order;
 
 	if (object == NULL)
 		return;
 
 	page = virt_to_head_page(object);
 	if (page_compound(page)) {
-		order = get_compound_page_order(page);
-
-		set_compound_page_head(page, NULL, order);
-		clear_page_compound(page);
-
-		__free_pages(page, order);
+		__free_compound_pages(page);
 		return;
 	}
 
